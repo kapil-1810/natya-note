@@ -1,0 +1,2282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Natya Note - Choreography Assistant</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;1,400&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+    <script src="/jspdf.umd.min.js"></script>
+    
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #9d174d; /* Deep Pink */
+            --bg: #fff1f2; /* Light Pink */
+            --paper: #ffffff;
+            --accent: #fbcfe8;
+            --dark: #1a1a1a;
+            --light-gray: #f5f5f5;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--bg) 0%, #fce4ec 100%);
+            color: #333;
+            font-family: 'Lato', sans-serif;
+            margin: 0;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        header {
+            text-align: center;
+            margin-top: 20px;
+            margin-bottom: 15px;
+            width: 100%;
+        }
+
+        h1 {
+            font-family: 'Playfair Display', serif;
+            color: var(--primary);
+            font-size: clamp(1.8rem, 5vw, 2.5rem);
+            margin: 0;
+            letter-spacing: -0.5px;
+        }
+
+        p.subtitle {
+            color: #831843;
+            font-style: italic;
+            opacity: 0.8;
+            margin-top: 5px;
+            font-size: clamp(0.85rem, 2vw, 1rem);
+        }
+
+        /* The Main Card */
+        .workspace {
+            background: var(--paper);
+            width: 100%;
+            max-width: 800px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(157, 23, 77, 0.15);
+            padding: clamp(20px, 5vw, 30px);
+            border: 2px solid var(--accent);
+            margin-bottom: 20px;
+        }
+
+        /* Controls Row */
+        .toolbar {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+            width: 100%;
+        }
+
+        select, button {
+            padding: 12px 16px;
+            border-radius: 10px;
+            border: 2px solid var(--accent);
+            background: white;
+            font-family: 'Lato', sans-serif;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: clamp(0.9rem, 2vw, 1rem);
+            font-weight: 500;
+            min-height: 44px;
+        }
+
+        button {
+            border: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        button.inspire-btn {
+            background: linear-gradient(135deg, var(--primary), #c2185b);
+            color: white;
+            border: none;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 6px 20px rgba(157, 23, 77, 0.3);
+        }
+        
+        button.inspire-btn:hover { 
+            background: linear-gradient(135deg, #831843, #a00050);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(157, 23, 77, 0.4);
+        }
+        
+        button.inspire-btn:active {
+            transform: translateY(0);
+        }
+
+        /* Writing Area */
+        .paper-area {
+            position: relative;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 20px;
+            font-size: clamp(1rem, 2vw, 1.1rem);
+            line-height: 1.6;
+            border: 2px solid #f3e8ff;
+            border-radius: 12px;
+            background: white;
+            font-family: 'Lato', sans-serif;
+            resize: vertical;
+            min-height: 200px;
+            transition: border-color 0.3s ease;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(157, 23, 77, 0.1);
+        }
+
+        /* Media Tabs */
+        .media-tabs {
+            display: flex;
+            gap: 8px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+            border-bottom: 2px solid var(--accent);
+            padding-bottom: 12px;
+            overflow-x: auto;
+        }
+
+        .media-tab {
+            padding: 10px 16px;
+            background: transparent;
+            border: 2px solid transparent;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: clamp(0.85rem, 2vw, 0.95rem);
+            white-space: nowrap;
+            min-height: auto;
+            box-shadow: none;
+            font-weight: 500;
+        }
+
+        .media-tab:hover {
+            background: rgba(157, 23, 77, 0.05);
+        }
+
+        .media-tab.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+            box-shadow: 0 4px 12px rgba(157, 23, 77, 0.2);
+        }
+
+        .media-content {
+            display: none;
+            padding: 20px 0;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .media-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        textarea:focus { border-color: var(--primary); background: #fff; }
+
+        .beat-badge {
+            position: absolute;
+            bottom: 15px;
+            right: 15px;
+            background: #fdf2f8;
+            color: var(--primary);
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            border: 1px solid var(--accent);
+        }
+
+        /* AI Suggestion Box */
+        .suggestion-box {
+            margin-top: 20px;
+            background: #fff0f5;
+            border-left: 4px solid var(--primary);
+            padding: 15px;
+            border-radius: 8px;
+            display: none; /* Hidden by default */
+        }
+        .suggestion-text { font-style: italic; color: #555; }
+        .add-btn {
+            color: var(--primary);
+            font-weight: bold;
+            text-decoration: underline;
+            cursor: pointer;
+            font-size: 0.9rem;
+            margin-top: 5px;
+            display: inline-block;
+        }
+
+        /* Footer Actions */
+        .actions {
+            margin-top: 30px;
+            display: flex;
+            justify-content: flex-end;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+        }
+
+        button.pdf-btn {
+            background: #333;
+            color: white;
+            border: none;
+        }
+        
+        button.action-btn {
+            padding: 12px 16px;
+            border-radius: 8px;
+            border: 1px solid var(--accent);
+            background: white;
+            font-family: 'Lato', sans-serif;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-right: 10px;
+        }
+
+        /* New Feature Styles */
+        .features-panel {
+            background: #fdf2f8;
+            border: 1px solid var(--accent);
+            border-radius: 12px;
+            padding: 15px;
+            margin-top: 20px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .feature-box {
+            background: white;
+            padding: 12px;
+            border-radius: 8px;
+            border-left: 3px solid var(--primary);
+        }
+
+        .feature-box h4 {
+            margin: 0 0 8px 0;
+            color: var(--primary);
+            font-size: 0.9rem;
+        }
+
+        .feature-controls {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .feature-controls button, .feature-controls select {
+            padding: 6px 10px;
+            font-size: 0.85rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            background: white;
+        }
+
+        .timer-display {
+            font-weight: bold;
+            color: var(--primary);
+            font-size: 1.2rem;
+        }
+
+        .beat-grid {
+            display: flex;
+            gap: 5px;
+            margin-top: 8px;
+            flex-wrap: wrap;
+        }
+
+        .beat-dot {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #e0e0e0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: bold;
+        }
+
+        .beat-dot.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        .beat-dot.sam {
+            border: 2px solid var(--primary);
+            font-weight: bold;
+        }
+
+        /* Video & Media Section */
+        .media-section {
+            background: linear-gradient(135deg, #fdf2f8 0%, #fff0f5 100%);
+            border: 1px solid var(--accent);
+            border-radius: 12px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+
+        .media-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #eee;
+        }
+
+        .media-tab {
+            padding: 8px 16px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #666;
+            font-weight: bold;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .media-tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        .media-content {
+            display: none;
+        }
+
+        .media-content.active {
+            display: block;
+        }
+
+        .video-preview {
+            width: 100%;
+            max-width: 100%;
+            height: 300px;
+            background: #000;
+            border-radius: 8px;
+            margin: 10px 0;
+            object-fit: cover;
+            transform: scaleX(-1);
+        }
+
+        .recorder-controls {
+            display: flex;
+            gap: 10px;
+            margin: 10px 0;
+            flex-wrap: wrap;
+        }
+
+        .recorder-controls button {
+            padding: 8px 12px;
+            border: 1px solid var(--primary);
+            background: white;
+            color: var(--primary);
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+
+        .recorder-controls button:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        .recorder-status {
+            font-size: 0.9rem;
+            color: var(--primary);
+            margin: 10px 0;
+            font-weight: bold;
+        }
+
+        .recorder-status.recording::before {
+            content: '● ';
+            color: #ff4444;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.3; }
+        }
+
+        .notes-list {
+            max-height: 200px;
+            overflow-y: auto;
+            background: white;
+            border-radius: 6px;
+            padding: 10px;
+            margin-top: 10px;
+        }
+
+        .note-item {
+            background: #fdf2f8;
+            padding: 8px;
+            margin: 5px 0;
+            border-left: 3px solid var(--primary);
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .note-time {
+            font-size: 0.8rem;
+            color: #999;
+        }
+
+        .note-delete {
+            background: #ff4444;
+            color: white;
+            border: none;
+            padding: 2px 6px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+
+        .music-upload {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            align-items: stretch;
+            width: 100%;
+            margin: 15px 0;
+        }
+
+        .music-upload input[type="file"] {
+            padding: 12px;
+            border: 2px dashed var(--primary);
+            border-radius: 10px;
+            background: #fdf2f8;
+            cursor: pointer;
+            font-size: 0.95rem;
+            color: #666;
+            transition: all 0.3s ease;
+        }
+
+        .music-upload input[type="file"]:hover {
+            background: #fce4ec;
+            border-color: #c2185b;
+        }
+
+        .music-player {
+            width: 100%;
+            margin: 15px 0;
+            padding: 12px;
+            background: linear-gradient(135deg, #fff5f7, #fce4ec);
+            border-radius: 12px;
+            border: 2px solid var(--accent);
+        }
+
+        .music-player:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(157, 23, 77, 0.2);
+        }
+
+        /* Style audio controls for mobile */
+        .music-player::webkit-slider-thumb {
+            height: 18px;
+            width: 18px;
+            border-radius: 50%;
+        }
+
+        .now-playing {
+            color: var(--primary);
+            font-weight: bold;
+            margin-top: 8px;
+            font-size: 0.9rem;
+        }
+
+        /* New Feature Styles */
+        .recording-item {
+            background: white;
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-left: 4px solid var(--primary);
+        }
+
+        .recording-info {
+            flex: 1;
+        }
+
+        .recording-name {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .recording-time {
+            font-size: 0.8rem;
+            color: #999;
+        }
+
+        .recording-actions {
+            display: flex;
+            gap: 5px;
+        }
+
+        .recording-actions button {
+            padding: 4px 8px;
+            font-size: 0.8rem;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        .btn-play {
+            background: #60a5fa;
+            color: white;
+        }
+
+        .btn-delete {
+            background: #ff4444;
+            color: white;
+        }
+
+        .streak-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #ff6b6b, #ffa07a);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: bold;
+            text-align: center;
+            margin: 10px 0;
+        }
+
+        .streak-number {
+            font-size: 2rem;
+            display: block;
+        }
+
+        .speed-controls {
+            display: flex;
+            gap: 8px;
+            margin: 10px 0;
+            flex-wrap: wrap;
+        }
+
+        .speed-btn {
+            padding: 8px 12px;
+            border: 2px solid #ddd;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+
+        .speed-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .studio-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            z-index: 9999;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .studio-overlay.active {
+            display: flex;
+        }
+
+        .studio-video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1);
+        }
+
+        .studio-controls {
+            position: absolute;
+            bottom: 20px;
+            display: flex;
+            gap: 15px;
+            background: rgba(0,0,0,0.8);
+            padding: 15px 30px;
+            border-radius: 12px;
+        }
+
+        .studio-controls button {
+            padding: 12px 24px;
+            font-size: 1rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+
+        .btn-exit {
+            background: #ff4444;
+            color: white;
+        }
+
+        .btn-record {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .studio-timer {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 8px;
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .voice-memo-item {
+            background: #fdf2f8;
+            padding: 10px;
+            margin: 8px 0;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .voice-memo-text {
+            flex: 1;
+        }
+
+        .voice-time {
+            font-size: 0.8rem;
+            color: #999;
+        }
+
+        .voice-play {
+            padding: 6px 12px;
+            background: #60a5fa;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+
+        /* ===== MOBILE RESPONSIVE ===== */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 1.8rem;
+            }
+
+            .workspace {
+                width: 100%;
+                padding: clamp(15px, 4vw, 25px);
+                border-radius: 16px;
+                margin: 0 10px 20px 10px;
+            }
+
+            .toolbar {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+
+            select, button {
+                padding: 14px 16px;
+                font-size: 1rem;
+                min-height: 48px;
+            }
+
+            textarea {
+                min-height: 200px;
+                padding: 16px;
+                font-size: 1rem;
+            }
+
+            .media-tabs {
+                gap: 6px;
+                padding-bottom: 10px;
+                margin: 15px 0;
+            }
+
+            .media-tab {
+                padding: 8px 12px;
+                font-size: 0.8rem;
+            }
+
+            .video-preview {
+                height: 250px;
+            }
+
+            .music-player {
+                height: 60px;
+            }
+
+            .features-panel {
+                display: grid;
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+
+            .feature-box {
+                padding: 15px;
+            }
+
+            .feature-controls {
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+
+            .feature-controls button, .feature-controls select {
+                flex: 1;
+                min-width: 80px;
+            }
+
+            .recorder-controls {
+                flex-direction: column;
+            }
+
+            .recorder-controls button {
+                width: 100%;
+                padding: 12px;
+            }
+
+            .studio-controls {
+                flex-wrap: wrap;
+                width: 90%;
+                bottom: 10px;
+                padding: 12px 15px;
+            }
+
+            .studio-controls button {
+                flex: 1;
+                min-width: 100px;
+                padding: 10px 12px;
+                font-size: 0.9rem;
+            }
+
+            video {
+                max-width: 100%;
+            }
+
+            .recording-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+
+            .recording-info {
+                width: 100%;
+            }
+
+            .recording-actions {
+                width: 100%;
+                display: flex;
+                gap: 8px;
+            }
+
+            .recording-actions button {
+                flex: 1;
+                padding: 8px;
+                font-size: 0.85rem;
+            }
+
+            .voice-memo-item {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .voice-memo-item audio {
+                width: 100%;
+            }
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 0;
+            }
+
+            .workspace {
+                margin: 0 0 15px 0;
+                padding: 15px;
+                border-radius: 12px;
+            }
+
+            h1 {
+                font-size: 1.5rem;
+            }
+
+            header {
+                margin-top: 10px;
+                margin-bottom: 10px;
+            }
+
+            p.subtitle {
+                font-size: 0.8rem;
+            }
+
+            select, button {
+                font-size: 0.95rem;
+                padding: 12px 14px;
+                min-height: 44px;
+            }
+
+            .toolbar {
+                grid-template-columns: 1fr;
+            }
+
+            textarea {
+                font-size: 1rem;
+                padding: 12px;
+                min-height: 180px;
+            }
+
+            .media-tabs {
+                gap: 4px;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .media-tab {
+                padding: 6px 10px;
+                font-size: 0.75rem;
+                white-space: nowrap;
+            }
+
+            .beat-badge {
+                font-size: 0.8rem;
+                padding: 6px 10px;
+            }
+
+            .feature-box h4 {
+                font-size: 0.95rem;
+                margin: 8px 0;
+            }
+
+            .feature-box {
+                padding: 12px;
+            }
+
+            .speed-btn {
+                padding: 8px 10px;
+                font-size: 0.8rem;
+            }
+
+            .studio-controls {
+                bottom: 5px;
+                padding: 10px 12px;
+                gap: 8px;
+            }
+
+            .studio-controls button {
+                padding: 8px 10px;
+                font-size: 0.85rem;
+            }
+
+            /* Make audio player taller on tiny screens */
+            .music-player {
+                height: 55px;
+            }
+
+            input[type="file"] {
+                padding: 10px;
+                font-size: 0.9rem;
+            }
+
+            .recording-item {
+                padding: 10px;
+                font-size: 0.9rem;
+            }
+
+            .note-item {
+                padding: 6px;
+                font-size: 0.85rem;
+            }
+        }
+
+        /* Portrait mode adjustments */
+        @media (orientation: portrait) {
+            .studio-controls {
+                flex-direction: column;
+                width: 85%;
+            }
+
+            .studio-controls button {
+                width: 100%;
+                padding: 12px;
+            }
+        }
+
+        /* Landscape mode adjustments */
+        @media (orientation: landscape) and (max-height: 600px) {
+            .workspace {
+                margin-top: 5px;
+                margin-bottom: 5px;
+            }
+
+            textarea {
+                min-height: 150px;
+            }
+
+            .video-preview {
+                height: 200px;
+            }
+        }
+    </style>
+
+</head>
+<body>
+
+    <header>
+        <h1>Natya Note</h1>
+        <p class="subtitle">Your Digital Choreography Companion</p>
+    </header>
+
+    <div class="workspace">
+        
+        <div class="toolbar">
+            <select id="taal">
+                <option value="Teen Taal (16 Beats)">Teen Taal (16)</option>
+                <option value="Jhap Taal (10 Beats)">Jhap Taal (10)</option>
+                <option value="Rupak Taal (7 Beats)">Rupak Taal (7)</option>
+                <option value="Dadra (6 Beats)">Dadra (6)</option>
+            </select>
+            
+            <select id="stepType">
+                <option value="Tihai">Ending (Tihai)</option>
+                <option value="Toda">Fast Sequence (Toda)</option>
+                <option value="Chakkar">Spins (Chakkar)</option>
+                <option value="Aamad">Entrance (Aamad)</option>
+            </select>
+
+            <button class="inspire-btn" onclick="askAI()">
+                ✨ Inspire Me
+            </button>
+        </div>
+
+        <div class="paper-area">
+            <textarea id="notebook" placeholder="Start typing your Bol here... (e.g. Dha Dhin Dhin Dha)"></textarea>
+            <div id="beatCounter" class="beat-badge">0 Beats</div>
+        </div>
+
+        <!-- NEW: Features Panel -->
+        <div class="features-panel">
+            <!-- Metronome -->
+            <div class="feature-box">
+                <h4>🎵 Metronome</h4>
+                <div class="feature-controls">
+                    <select id="tempo" style="width: 80px;">
+                        <option value="60">60 BPM</option>
+                        <option value="80">80 BPM</option>
+                        <option value="100" selected>100 BPM</option>
+                        <option value="120">120 BPM</option>
+                        <option value="140">140 BPM</option>
+                    </select>
+                    <button onclick="toggleMetronome()" id="metroBtn">▶ Play</button>
+                </div>
+            </div>
+
+            <!-- Difficulty Level -->
+            <div class="feature-box">
+                <h4>🎯 Difficulty</h4>
+                <div class="feature-controls">
+                    <button onclick="setDifficulty('easy')" id="diffEasy" class="difficulty-btn">Easy</button>
+                    <button onclick="setDifficulty('medium')" id="diffMedium" class="difficulty-btn">Medium</button>
+                    <button onclick="setDifficulty('hard')" id="diffHard" class="difficulty-btn">Hard</button>
+                </div>
+            </div>
+
+            <!-- Practice Timer -->
+            <div class="feature-box">
+                <h4>⏱️ Practice Session</h4>
+                <div class="timer-display" id="timerDisplay">0:00</div>
+                <div class="feature-controls">
+                    <button onclick="startTimer()">Start</button>
+                    <button onclick="stopTimer()">Stop</button>
+                    <button onclick="resetTimer()">Reset</button>
+                </div>
+            </div>
+
+            <!-- Taal Visualizer -->
+            <div class="feature-box">
+                <h4>📊 Beat Structure</h4>
+                <div class="beat-grid" id="beatGrid"></div>
+            </div>
+        </div>
+
+        <!-- NEW: Media Section (Video, Notes, Music) -->
+        <div class="media-section">
+            <div class="media-tabs">
+                <button class="media-tab active" onclick="switchTab('video')">🎥 Video Recorder</button>
+                <button class="media-tab" onclick="switchTab('recordings')">📁 Recordings</button>
+                <button class="media-tab" onclick="switchTab('voice')">🎤 Voice Memos</button>
+                <button class="media-tab" onclick="switchTab('speed')">⚡ Speed Trainer</button>
+                <button class="media-tab" onclick="switchTab('streak')">🔥 Streak & Stats</button>
+                <button class="media-tab" onclick="switchTab('voicenote')">🗣️ Voice Notes</button>
+                <button class="media-tab" onclick="switchTab('comparison')">📊 Compare Videos</button>
+                <button class="media-tab" onclick="switchTab('challenges')">🎯 Daily Challenges</button>
+                <button class="media-tab" onclick="switchTab('music')">🎵 Music Player</button>
+            </div>
+
+            <!-- Video Recorder Tab -->
+            <div id="video-content" class="media-content active">
+                <p style="font-size: 0.9rem; color: #666;">Record your practice sessions to review later</p>
+                <video id="videoPreview" class="video-preview" autoplay muted playsinline></video>
+                <div class="recorder-controls">
+                    <button onclick="startVideoRecorder()">▶ Start Recording</button>
+                    <button onclick="stopVideoRecorder()">⏹ Stop Recording</button>
+                    <button onclick="enterStudioMode()">🎬 Studio Mode</button>
+                    <button onclick="downloadVideo()">⬇️ Download Video</button>
+                </div>
+                <div id="recorderStatus" class="recorder-status"></div>
+            </div>
+
+            <!-- Segment Notes Tab (Removed - replaced with new features) -->
+
+            <!-- NEW: Recordings Library Tab -->
+            <div id="recordings-content" class="media-content">
+                <p style="font-size: 0.9rem; color: #666;">Your saved practice recordings</p>
+                <div id="recordingsList" class="notes-list" style="min-height: 200px;">
+                    <p style="text-align: center; color: #999;">No recordings yet</p>
+                </div>
+            </div>
+
+            <!-- NEW: Voice Memos Tab -->
+            <div id="voice-content" class="media-content">
+                <p style="font-size: 0.9rem; color: #666;">Quick voice notes about your practice</p>
+                <div class="recorder-controls">
+                    <button onclick="startVoiceMemo()">🎙️ Start Recording</button>
+                    <button onclick="stopVoiceMemo()">⏹ Stop</button>
+                </div>
+                <div id="voiceMemosList" class="notes-list" style="min-height: 150px;">
+                    <p style="text-align: center; color: #999;">No voice memos yet</p>
+                </div>
+            </div>
+
+            <!-- NEW: Speed Trainer Tab -->
+            <div id="speed-content" class="media-content">
+                <p style="font-size: 0.9rem; color: #666;">Practice your choreography at different speeds</p>
+                <div class="speed-controls">
+                    <button class="speed-btn active" onclick="setSpeed(1.0)">1.0x</button>
+                    <button class="speed-btn" onclick="setSpeed(1.25)">1.25x</button>
+                    <button class="speed-btn" onclick="setSpeed(1.5)">1.5x</button>
+                    <button class="speed-btn" onclick="setSpeed(2.0)">2.0x</button>
+                </div>
+                <div style="background: white; padding: 15px; border-radius: 6px; margin-top: 10px;">
+                    <p style="font-size: 0.9rem; color: #666; margin: 0 0 10px 0;">Your choreography at current speed:</p>
+                    <div id="speedDisplayText" style="font-size: 1.1rem; font-weight: bold; color: var(--primary); line-height: 1.8; word-spacing: 8px;">Type or paste your bols to practice...</div>
+                </div>
+            </div>
+
+            <!-- NEW: Streak & Stats Tab -->
+            <div id="streak-content" class="media-content">
+                <p style="font-size: 0.9rem; color: #666;">Track your practice consistency and motivation</p>
+                <div style="text-align: center;">
+                    <div class="streak-badge">
+                        <div class="streak-number" id="streakNumber">0</div>
+                        <div>Day Streak 🔥</div>
+                    </div>
+                </div>
+                <div style="background: white; padding: 15px; border-radius: 6px; margin-top: 15px;">
+                    <h4 style="margin: 0 0 10px 0; color: var(--primary);">📊 Practice Stats</h4>
+                    <p>Total Practice Time: <strong id="totalPracticeTime">0h 0m</strong></p>
+                    <p>Sessions This Week: <strong id="sessionsThisWeek">0</strong></p>
+                    <p>Last Practice: <strong id="lastPracticeTime">Never</strong></p>
+                    <button onclick="recordPracticeSession()" style="background: var(--primary); color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 10px;">✅ Mark Practice Done Today</button>
+                </div>
+            </div>
+
+            <!-- Music Player Tab -->
+            <div id="music-content" class="media-content">
+                <div style="background: linear-gradient(135deg, #fdf2f8, #fce4ec); padding: 20px; border-radius: 12px; border: 2px solid var(--accent);">
+                    <h3 style="margin-top: 0; color: var(--primary); font-size: 1.2rem;">🎵 Practice Music</h3>
+                    <p style="font-size: 0.95rem; color: #666; margin: 10px 0;">Upload background music to practice with</p>
+                    
+                    <div class="music-upload">
+                        <div style="border: 2px dashed var(--primary); border-radius: 10px; padding: 15px; background: white; text-align: center; cursor: pointer;" onclick="document.getElementById('musicFile').click();">
+                            <div style="font-size: 2rem; margin-bottom: 10px;">🎼</div>
+                            <input type="file" id="musicFile" accept="audio/*" onchange="loadMusic()" style="display: none;">
+                            <div style="font-weight: bold; color: var(--primary);">Click to upload music</div>
+                            <div style="font-size: 0.85rem; color: #999; margin-top: 5px;">or drag & drop</div>
+                        </div>
+                        <div style="background: white; padding: 12px; border-radius: 8px; border: 1px solid var(--accent); width: 100%; text-align: center;">
+                            <div style="font-size: 0.85rem; color: #999;">Currently selected:</div>
+                            <span id="musicFileName" style="color: var(--primary); font-weight: bold; display: block; margin-top: 5px;">No music uploaded</span>
+                        </div>
+                    </div>
+
+                    <audio id="audioPlayer" class="music-player" controls style="margin-top: 15px;"></audio>
+                    
+                    <div id="nowPlaying" class="now-playing" style="text-align: center; padding: 10px; margin-top: 10px; background: white; border-radius: 8px; display: none;"></div>
+
+                    <div style="margin-top: 15px; padding: 12px; background: white; border-radius: 8px; border-left: 4px solid var(--primary);">
+                        <div style="font-size: 0.85rem; color: #666;">
+                            <strong>💡 Tip:</strong> Upload your favorite Kathak music or compositions to practice along with the beats. You can adjust the volume and replay as needed.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- NEW: Voice-to-Text Notes Tab -->
+            <div id="voicenote-content" class="media-content">
+                <p style="font-size: 0.9rem; color: #666;">Speak notes instead of typing them</p>
+                <div class="recorder-controls">
+                    <button onclick="startVoiceToText()" id="voiceToTextBtn">🎤 Start Speaking</button>
+                    <button onclick="stopVoiceToText()" id="stopVoiceToTextBtn" style="display: none;">⏹ Stop</button>
+                </div>
+                <div id="voiceToTextStatus" style="color: #666; margin: 10px 0; font-weight: bold;"></div>
+                <textarea id="voiceToTextArea" placeholder="Your spoken notes will appear here..." style="width: 100%; height: 120px; padding: 10px; border: 1px solid #ddd; border-radius: 6px; margin-top: 10px;"></textarea>
+                <button onclick="saveVoiceNote()" style="background: var(--primary); color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 10px;">💾 Save Note</button>
+            </div>
+
+            <!-- NEW: Video Comparison Tab -->
+            <div id="comparison-content" class="media-content">
+                <p style="font-size: 0.9rem; color: #666;">Compare your recording with a reference video side-by-side</p>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0;">
+                    <div>
+                        <p style="font-weight: bold; color: var(--primary);">Your Recording</p>
+                        <select id="yourRecording" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            <option>Select your recording...</option>
+                        </select>
+                        <video id="yourVideo" style="width: 100%; background: #000; border-radius: 6px; margin-top: 10px;" controls></video>
+                    </div>
+                    <div>
+                        <p style="font-weight: bold; color: var(--primary);">Reference Video</p>
+                        <input type="file" id="referenceVideo" accept="video/*" onchange="loadReferenceVideo()" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                        <video id="refVideo" style="width: 100%; background: #000; border-radius: 6px; margin-top: 10px;" controls></video>
+                    </div>
+                </div>
+                <button onclick="syncVideos()" style="background: #60a5fa; color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 10px;">🔄 Sync Play</button>
+            </div>
+
+            <!-- NEW: Daily Challenges Tab -->
+            <div id="challenges-content" class="media-content">
+                <p style="font-size: 0.9rem; color: #666;">Daily practice challenges to improve your skills</p>
+                <div id="challengesContainer" style="background: white; padding: 15px; border-radius: 6px; margin-top: 10px;">
+                    <div id="dailyChallengeBox" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 8px; margin-bottom: 15px;">
+                        <h3 style="margin: 0 0 10px 0;" id="challengeTitle">Today's Challenge</h3>
+                        <p id="challengeDesc" style="font-size: 0.95rem; margin: 0 0 15px 0;"></p>
+                        <div style="display: flex; gap: 10px;">
+                            <button onclick="startChallenge()" style="background: white; color: #667eea; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">▶ Start Challenge</button>
+                            <button onclick="skipChallenge()" style="background: rgba(255,255,255,0.3); color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">⏭️ Skip</button>
+                        </div>
+                    </div>
+                    <div id="challengeProgress" style="margin-top: 15px;">
+                        <h4 style="color: var(--primary);">Challenge Progress</h4>
+                        <p>Challenges Completed Today: <strong id="completedChallengesCount">0</strong>/3</p>
+                        <div id="completedChallengesList"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="aiBox" class="suggestion-box">
+            <strong>✨ AI Suggestion:</strong>
+            <p id="aiText" class="suggestion-text">Loading...</p>
+            <div style="display: flex; gap: 10px; margin-top: 10px;">
+                <span class="add-btn" onclick="acceptSuggestion()">+ Add to composition</span>
+                <span class="add-btn" onclick="copySuggestion()">📋 Copy</span>
+            </div>
+        </div>
+
+        <div class="actions">
+            <button class="action-btn" onclick="clearNotes()" style="background: #f87171; color: white; border: none;">🗑️ Clear</button>
+            <button class="action-btn" onclick="saveComposition()" style="background: #60a5fa; color: white; border: none;">💾 Save</button>
+            <button class="pdf-btn" onclick="generatePDF()">📄 Download PDF Notes</button>
+        </div>
+
+    </div>
+
+    <!-- Studio Mode Overlay -->
+    <div id="studioOverlay" class="studio-overlay">
+        <video id="studioVideo" class="studio-video" autoplay muted playsinline></video>
+        <div class="studio-timer" id="studioTimer">0:00</div>
+        <div class="studio-controls">
+            <button class="btn-record" onclick="toggleStudioRecording()" id="studioRecordBtn">🔴 Start Recording</button>
+            <button class="btn-exit" onclick="exitStudioMode()">✕ Exit Studio</button>
+        </div>
+    </div>
+
+    <script>
+        const notebook = document.getElementById('notebook');
+        const beatCounter = document.getElementById('beatCounter');
+        const aiBox = document.getElementById('aiBox');
+        const aiText = document.getElementById('aiText');
+        
+        let lastAiContent = "";
+
+        // LOAD SAVED COMPOSITION ON PAGE START
+        window.addEventListener('DOMContentLoaded', () => {
+            const saved = localStorage.getItem('kathakNotes');
+            if (saved) {
+                notebook.value = saved;
+                notebook.dispatchEvent(new Event('input'));
+            }
+        });
+
+        // 1. BEAT COUNTER LOGIC
+        // Counts beats based on Taal structure
+        function countBeats() {
+            const text = notebook.value.trim();
+            if(!text) {
+                beatCounter.innerText = "0 Beats";
+                return;
+            }
+            const taal = document.getElementById('taal').value;
+            let totalBeats = 0;
+            
+            // Count syllables (Bols)
+            const bols = text.split(/\s+/).filter(b => b.length > 0);
+            totalBeats = bols.length;
+            
+            // Estimate taal cycles
+            let taalsInCycle = 16; // Teen Taal default
+            if (taal.includes("Jhap")) taalsInCycle = 10;
+            if (taal.includes("Rupak")) taalsInCycle = 7;
+            if (taal.includes("Dadra")) taalsInCycle = 6;
+            
+            const cycles = Math.floor(totalBeats / taalsInCycle);
+            beatCounter.innerText = `${totalBeats} Bols | ${cycles} ${taal.split('(')[0].trim()} Cycle(s)`;
+        }
+
+        notebook.addEventListener('input', countBeats);
+        document.getElementById('taal').addEventListener('change', countBeats);
+
+        // 2. AI GENERATION LOGIC
+        async function askAI() {
+            const taal = document.getElementById('taal').value;
+            const type = document.getElementById('stepType').value;
+            const context = notebook.value; // Send current text so AI knows context
+
+            const btn = document.querySelector('.inspire-btn');
+            const originalText = btn.innerText;
+            
+            // UI Loading State
+            btn.innerText = "Thinking...";
+            btn.disabled = true;
+            aiBox.style.display = 'block';
+            aiText.innerText = "Composing dance steps...";
+
+            try {
+                const response = await fetch('/generate-step', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ taal, type, context })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Server error: ${response.status}`);
+                }
+
+                const data = await response.json();
+                if (data.error) {
+                    aiText.innerText = `Error: ${data.error}`;
+                    lastAiContent = "";
+                } else {
+                    lastAiContent = data.result || "";
+                    aiText.innerText = lastAiContent || "No suggestion generated";
+                }
+
+            } catch (err) {
+                console.error("Error:", err);
+                aiText.innerText = "❌ Connection lost. Make sure server is running!";
+                lastAiContent = "";
+            } finally {
+                btn.innerText = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        // 3. ADD SUGGESTION TO TEXTAREA
+        function acceptSuggestion() {
+            if (!lastAiContent || lastAiContent.trim() === "") {
+                aiText.innerText = "No suggestion to add. Click Inspire Me again!";
+                return;
+            }
+            const currentText = notebook.value;
+            // Add a new line if text exists, otherwise just add content
+            notebook.value = currentText + (currentText ? "\n\n" : "") + lastAiContent;
+            aiBox.style.display = 'none';
+            // Trigger input event to update beat counter
+            notebook.dispatchEvent(new Event('input'));
+        }
+
+        // 4. COPY SUGGESTION TO CLIPBOARD
+        function copySuggestion() {
+            if (!lastAiContent) {
+                aiText.innerText = "Nothing to copy!";
+                return;
+            }
+            navigator.clipboard.writeText(lastAiContent).then(() => {
+                const originalText = aiText.innerText;
+                aiText.innerText = "✅ Copied to clipboard!";
+                setTimeout(() => {
+                    aiText.innerText = originalText;
+                }, 2000);
+            });
+        }
+
+        // 5. SAVE COMPOSITION TO LOCAL STORAGE
+        function saveComposition() {
+            const content = notebook.value;
+            if (!content.trim()) {
+                alert("Nothing to save!");
+                return;
+            }
+            localStorage.setItem('kathakNotes', content);
+            alert("✅ Composition saved!");
+        }
+
+        // 6. CLEAR NOTES
+        function clearNotes() {
+            if (confirm("Are you sure? This will clear all your notes.")) {
+                notebook.value = "";
+                localStorage.removeItem('kathakNotes');
+                notebook.dispatchEvent(new Event('input'));
+                aiBox.style.display = 'none';
+                alert("✅ Notes cleared!");
+            }
+        }
+
+        // 7. KEYBOARD SHORTCUT (Ctrl+Enter to Inspire)
+        document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                e.preventDefault();
+                askAI();
+            }
+        });
+
+        // 8. PDF GENERATION LOGIC
+        function generatePDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            const date = new Date().toLocaleDateString();
+            const taal = document.getElementById('taal').value;
+            const stepType = document.getElementById('stepType').value;
+
+            // Title
+            doc.setFont("times", "bold");
+            doc.setFontSize(22);
+            doc.setTextColor(157, 23, 77); // Pink color
+            doc.text("Kathak Choreography Notes", 20, 20);
+
+            // Metadata
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(11);
+            doc.setTextColor(100);
+            doc.text(`Taal: ${taal}`, 20, 32);
+            doc.text(`Step Type: ${stepType}`, 20, 39);
+            doc.text(`Date: ${date}`, 20, 46);
+
+            // Line Divider
+            doc.setDrawColor(200);
+            doc.line(20, 52, 190, 52);
+
+            // Content
+            doc.setFont("times", "normal");
+            doc.setFontSize(13);
+            doc.setTextColor(0);
+            
+            const content = notebook.value || "(No notes written)";
+            // Wrap text automatically at 170 units wide
+            const splitText = doc.splitTextToSize(content, 170);
+            
+            doc.text(splitText, 20, 60);
+
+            // Footer
+            doc.setFont("helvetica", "italic");
+            doc.setFontSize(9);
+            doc.setTextColor(150);
+            doc.text("Created with Natya Note - Your Digital Choreography Companion", 20, 285);
+
+            // Save
+            doc.save(`Kathak_Notes_${Date.now()}.pdf`);
+        }
+
+        // ============ NEW FEATURES ============
+
+        // METRONOME
+        let metronomeActive = false;
+        let audioContext;
+        let currentTempo = 100;
+
+        function toggleMetronome() {
+            const btn = document.getElementById('metroBtn');
+            currentTempo = parseInt(document.getElementById('tempo').value);
+            
+            if (!metronomeActive) {
+                metronomeActive = true;
+                btn.innerText = "⏸ Stop";
+                startMetronome();
+            } else {
+                metronomeActive = false;
+                btn.innerText = "▶ Play";
+                if (audioContext) audioContext.close();
+            }
+        }
+
+        function startMetronome() {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            
+            function playClick() {
+                if (!metronomeActive) return;
+                
+                const osc = audioContext.createOscillator();
+                const gain = audioContext.createGain();
+                
+                osc.connect(gain);
+                gain.connect(audioContext.destination);
+                
+                osc.frequency.value = 1000;
+                gain.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+                
+                osc.start(audioContext.currentTime);
+                osc.stop(audioContext.currentTime + 0.1);
+                
+                const beatInterval = (60 / currentTempo) * 1000;
+                setTimeout(playClick, beatInterval);
+            }
+            
+            playClick();
+        }
+
+        // DIFFICULTY LEVEL
+        let currentDifficulty = 'medium';
+
+        function setDifficulty(level) {
+            currentDifficulty = level;
+            document.querySelectorAll('.difficulty-btn').forEach(b => {
+                b.style.background = 'white';
+                b.style.color = 'black';
+            });
+            document.getElementById('diff' + level.charAt(0).toUpperCase() + level.slice(1)).style.background = 'var(--primary)';
+            document.getElementById('diff' + level.charAt(0).toUpperCase() + level.slice(1)).style.color = 'white';
+        }
+
+        // Initialize difficulty
+        setDifficulty('medium');
+
+        // PRACTICE TIMER
+        let timerInterval;
+        let totalSeconds = 0;
+
+        function startTimer() {
+            if (timerInterval) return;
+            timerInterval = setInterval(() => {
+                totalSeconds++;
+                updateTimerDisplay();
+            }, 1000);
+        }
+
+        function stopTimer() {
+            clearInterval(timerInterval);
+            timerInterval = null;
+        }
+
+        function resetTimer() {
+            stopTimer();
+            totalSeconds = 0;
+            updateTimerDisplay();
+        }
+
+        function updateTimerDisplay() {
+            const mins = Math.floor(totalSeconds / 60);
+            const secs = totalSeconds % 60;
+            document.getElementById('timerDisplay').innerText = 
+                `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+        }
+
+        // BEAT VISUALIZER
+        function drawBeatGrid() {
+            const taal = document.getElementById('taal').value;
+            const beatGrid = document.getElementById('beatGrid');
+            beatGrid.innerHTML = '';
+            
+            let beats = 16; // Teen Taal
+            if (taal.includes('Jhap')) beats = 10;
+            if (taal.includes('Rupak')) beats = 7;
+            if (taal.includes('Dadra')) beats = 6;
+            
+            for (let i = 1; i <= beats; i++) {
+                const dot = document.createElement('div');
+                dot.className = 'beat-dot';
+                if (i === 1) dot.classList.add('sam'); // First beat (sam)
+                dot.innerText = i;
+                beatGrid.appendChild(dot);
+            }
+        }
+
+        // Initialize beat grid
+        drawBeatGrid();
+        document.getElementById('taal').addEventListener('change', drawBeatGrid);
+
+        // ============ NEW MEDIA FEATURES ============
+
+        // TAB SWITCHING
+        function switchTab(tab) {
+            // Hide all content
+            document.querySelectorAll('.media-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.media-tab').forEach(el => el.classList.remove('active'));
+            
+            // Show selected tab
+            document.getElementById(tab + '-content').classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // VIDEO RECORDER
+        let mediaStream;
+        let mediaRecorder;
+        let recordedChunks = [];
+        let currentRecording;
+
+        async function startVideoRecorder() {
+            try {
+                mediaStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { width: 320, height: 240 },
+                    audio: true 
+                });
+                
+                const videoPreview = document.getElementById('videoPreview');
+                videoPreview.srcObject = mediaStream;
+                
+                recordedChunks = [];
+                mediaRecorder = new MediaRecorder(mediaStream);
+                
+                mediaRecorder.ondataavailable = (event) => {
+                    recordedChunks.push(event.data);
+                };
+                
+                mediaRecorder.onstop = () => {
+                    currentRecording = new Blob(recordedChunks, { type: 'video/webm' });
+                    document.getElementById('recorderStatus').classList.add('recording');
+                };
+                
+                mediaRecorder.start();
+                document.getElementById('recorderStatus').innerHTML = 'Recording...';
+                document.getElementById('recorderStatus').classList.add('recording');
+                document.querySelector('.inspire-btn').disabled = true;
+                
+            } catch (error) {
+                alert('Camera access denied or not available');
+                console.error(error);
+            }
+        }
+
+        function stopVideoRecorder() {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+                mediaStream.getTracks().forEach(track => track.stop());
+                
+                document.getElementById('recorderStatus').innerHTML = '✅ Recording saved!';
+                document.getElementById('recorderStatus').classList.remove('recording');
+                document.querySelector('.inspire-btn').disabled = false;
+            }
+        }
+
+        function downloadVideo() {
+            if (currentRecording) {
+                const url = URL.createObjectURL(currentRecording);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `practice-${Date.now()}.webm`;
+                a.click();
+                URL.revokeObjectURL(url);
+            } else {
+                alert('No recording to download!');
+            }
+        }
+
+        // SEGMENT NOTES
+        let notesList = [];
+
+        function addNote() {
+            const input = document.getElementById('noteInput');
+            const noteText = input.value.trim();
+            
+            if (!noteText) {
+                alert('Please write a note!');
+                return;
+            }
+            
+            const note = {
+                id: Date.now(),
+                text: noteText,
+                time: new Date().toLocaleTimeString()
+            };
+            
+            notesList.push(note);
+            input.value = '';
+            
+            // Save to localStorage
+            localStorage.setItem('choreNotes', JSON.stringify(notesList));
+            
+            renderNotes();
+        }
+
+        function deleteNote(id) {
+            notesList = notesList.filter(note => note.id !== id);
+            localStorage.setItem('choreNotes', JSON.stringify(notesList));
+            renderNotes();
+        }
+
+        function renderNotes() {
+            const notesList_el = document.getElementById('notesList');
+            notesList_el.innerHTML = '';
+            
+            if (notesList.length === 0) {
+                notesList_el.innerHTML = '<p style="color: #999; text-align: center;">No notes yet</p>';
+                return;
+            }
+            
+            notesList.forEach(note => {
+                const noteEl = document.createElement('div');
+                noteEl.className = 'note-item';
+                noteEl.innerHTML = `
+                    <div>
+                        <div>${note.text}</div>
+                        <div class="note-time">${note.time}</div>
+                    </div>
+                    <button class="note-delete" onclick="deleteNote(${note.id})">Delete</button>
+                `;
+                notesList_el.appendChild(noteEl);
+            });
+        }
+
+        // Load notes on page start
+        window.addEventListener('DOMContentLoaded', () => {
+            const saved = localStorage.getItem('choreNotes');
+            if (saved) {
+                notesList = JSON.parse(saved);
+                renderNotes();
+            }
+        });
+
+        // MUSIC PLAYER
+        function loadMusic() {
+            const file = document.getElementById('musicFile').files[0];
+            if (!file) return;
+            
+            const url = URL.createObjectURL(file);
+            document.getElementById('audioPlayer').src = url;
+            document.getElementById('musicFileName').textContent = file.name;
+            document.getElementById('nowPlaying').textContent = `Now playing: ${file.name}`;
+            
+            // Save music preference
+            localStorage.setItem('selectedMusicName', file.name);
+        }
+
+        // ============ NEW INNOVATIVE FEATURES ============
+
+        // 1. RECORDING LIBRARY
+        let recordings = [];
+
+        function saveRecording(blob) {
+            const recording = {
+                id: Date.now(),
+                name: `Recording-${recordings.length + 1}`,
+                blob: blob,
+                date: new Date().toLocaleString(),
+                size: (blob.size / 1024 / 1024).toFixed(2) + ' MB'
+            };
+            recordings.push(recording);
+            localStorage.setItem('recordings', JSON.stringify({ids: recordings.map(r => r.id), dates: recordings.map(r => r.date)}));
+            renderRecordings();
+        }
+
+        function renderRecordings() {
+            const list = document.getElementById('recordingsList');
+            list.innerHTML = '';
+            
+            if (recordings.length === 0) {
+                list.innerHTML = '<p style="text-align: center; color: #999;">No recordings yet</p>';
+                return;
+            }
+            
+            recordings.forEach(rec => {
+                const item = document.createElement('div');
+                item.className = 'recording-item';
+                item.innerHTML = `
+                    <div class="recording-info">
+                        <div class="recording-name">${rec.name}</div>
+                        <div class="recording-time">${rec.date} • ${rec.size}</div>
+                    </div>
+                    <div class="recording-actions">
+                        <button class="btn-play" onclick="playRecording(${rec.id})">▶ Play</button>
+                        <button class="btn-delete" onclick="deleteRecording(${rec.id})">🗑️</button>
+                    </div>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        function playRecording(id) {
+            const rec = recordings.find(r => r.id === id);
+            if (rec) {
+                const url = URL.createObjectURL(rec.blob);
+                const video = document.createElement('video');
+                video.src = url;
+                video.controls = true;
+                video.style.width = '100%';
+                alert('Recording will play in new window');
+                window.open(url);
+            }
+        }
+
+        function deleteRecording(id) {
+            if (confirm('Delete this recording?')) {
+                recordings = recordings.filter(r => r.id !== id);
+                renderRecordings();
+            }
+        }
+
+        // 2. VOICE MEMOS
+        let voiceRecorder;
+        let voiceChunks = [];
+        let voiceMemos = [];
+
+        async function startVoiceMemo() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                voiceRecorder = new MediaRecorder(stream);
+                voiceChunks = [];
+                
+                voiceRecorder.ondataavailable = (e) => voiceChunks.push(e.data);
+                voiceRecorder.onstop = () => {
+                    const blob = new Blob(voiceChunks, { type: 'audio/mp3' });
+                    const prompt = prompt('Add a note to this voice memo:');
+                    if (prompt) {
+                        voiceMemos.push({
+                            id: Date.now(),
+                            text: prompt,
+                            blob: blob,
+                            date: new Date().toLocaleTimeString()
+                        });
+                        renderVoiceMemos();
+                        localStorage.setItem('voiceMemos', JSON.stringify(voiceMemos.map(m => ({id: m.id, text: m.text, date: m.date}))));
+                    }
+                    stream.getTracks().forEach(t => t.stop());
+                };
+                
+                voiceRecorder.start();
+                document.querySelector('#voice-content button').innerText = '⏹ Stop Recording...';
+            } catch (e) {
+                alert('Microphone access denied');
+            }
+        }
+
+        function stopVoiceMemo() {
+            if (voiceRecorder) {
+                voiceRecorder.stop();
+                document.querySelector('#voice-content button').innerText = '🎙️ Start Recording';
+            }
+        }
+
+        function renderVoiceMemos() {
+            const list = document.getElementById('voiceMemosList');
+            list.innerHTML = '';
+            
+            if (voiceMemos.length === 0) {
+                list.innerHTML = '<p style="text-align: center; color: #999;">No voice memos yet</p>';
+                return;
+            }
+            
+            voiceMemos.forEach(memo => {
+                const item = document.createElement('div');
+                item.className = 'voice-memo-item';
+                item.innerHTML = `
+                    <div class="voice-memo-text">
+                        <div style="font-weight: bold;">${memo.text}</div>
+                        <div class="voice-time">${memo.date}</div>
+                    </div>
+                    <button class="voice-play" onclick="playVoiceMemo(${memo.id})">▶ Play</button>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        function playVoiceMemo(id) {
+            const memo = voiceMemos.find(m => m.id === id);
+            if (memo) {
+                const url = URL.createObjectURL(memo.blob);
+                const audio = new Audio(url);
+                audio.play();
+            }
+        }
+
+        // 3. BOL SPEED TRAINER
+        let currentSpeed = 1.0;
+
+        function setSpeed(speed) {
+            currentSpeed = speed;
+            document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+            updateSpeedDisplay();
+        }
+
+        function updateSpeedDisplay() {
+            const text = notebook.value.trim();
+            if (!text) {
+                document.getElementById('speedDisplayText').innerText = 'Type or paste your bols to practice...';
+                return;
+            }
+            
+            const words = text.split(/\s+/);
+            const delayMs = Math.round((60 / currentSpeed) * 100);
+            
+            let displayText = '';
+            words.forEach((word, i) => {
+                displayText += `<span style="display: inline-block; min-width: 60px;">${word}</span> `;
+            });
+            
+            document.getElementById('speedDisplayText').innerHTML = displayText;
+            document.getElementById('speedDisplayText').title = `Speed: ${currentSpeed}x (${delayMs}ms between bols)`;
+        }
+
+        notebook.addEventListener('input', updateSpeedDisplay);
+
+        // 4. PRACTICE STREAK TRACKER
+        let streakData = JSON.parse(localStorage.getItem('streakData') || '{"streak": 0, "lastDate": null, "totalMinutes": 0, "sessionsWeek": 0}');
+
+        function recordPracticeSession() {
+            const today = new Date().toDateString();
+            const lastDate = streakData.lastDate;
+            
+            if (lastDate !== today) {
+                const yesterday = new Date();
+                yesterday.setDate(yesterday.getDate() - 1);
+                
+                if (lastDate === yesterday.toDateString()) {
+                    streakData.streak++;
+                } else {
+                    streakData.streak = 1;
+                }
+                streakData.lastDate = today;
+            }
+            
+            streakData.totalMinutes += 30; // Default 30 min session
+            streakData.sessionsWeek++;
+            
+            localStorage.setItem('streakData', JSON.stringify(streakData));
+            updateStreakDisplay();
+            alert('🎉 Practice session recorded! Keep it up!');
+        }
+
+        function updateStreakDisplay() {
+            document.getElementById('streakNumber').innerText = streakData.streak;
+            document.getElementById('totalPracticeTime').innerText = Math.floor(streakData.totalMinutes / 60) + 'h ' + (streakData.totalMinutes % 60) + 'm';
+            document.getElementById('sessionsThisWeek').innerText = streakData.sessionsWeek;
+            document.getElementById('lastPracticeTime').innerText = streakData.lastDate || 'Never';
+        }
+
+        updateStreakDisplay();
+
+        // 5. STUDIO MODE (Full Screen Immersive Recording)
+        let studioMediaStream;
+        let studioRecording = false;
+        let studioRecorder;
+        let studioChunks = [];
+        let studioTimer = 0;
+        let studioTimerInterval;
+
+        async function enterStudioMode() {
+            const overlay = document.getElementById('studioOverlay');
+            overlay.classList.add('active');
+            
+            try {
+                studioMediaStream = await navigator.mediaDevices.getUserMedia({
+                    video: { width: 1280, height: 720 },
+                    audio: true
+                });
+                
+                const video = document.getElementById('studioVideo');
+                video.srcObject = studioMediaStream;
+            } catch (e) {
+                alert('Camera access denied');
+                overlay.classList.remove('active');
+            }
+        }
+
+        function exitStudioMode() {
+            const overlay = document.getElementById('studioOverlay');
+            overlay.classList.remove('active');
+            
+            if (studioRecording) {
+                toggleStudioRecording();
+            }
+            
+            if (studioMediaStream) {
+                studioMediaStream.getTracks().forEach(t => t.stop());
+            }
+            
+            clearInterval(studioTimerInterval);
+        }
+
+        function toggleStudioRecording() {
+            const btn = document.getElementById('studioRecordBtn');
+            
+            if (!studioRecording) {
+                studioRecording = true;
+                studioChunks = [];
+                studioTimer = 0;
+                btn.innerText = '⏹ Stop Recording';
+                btn.style.background = '#ff4444';
+                
+                studioRecorder = new MediaRecorder(studioMediaStream);
+                studioRecorder.ondataavailable = (e) => studioChunks.push(e.data);
+                studioRecorder.start();
+                
+                studioTimerInterval = setInterval(() => {
+                    studioTimer++;
+                    const mins = Math.floor(studioTimer / 60);
+                    const secs = studioTimer % 60;
+                    document.getElementById('studioTimer').innerText = 
+                        `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+                }, 1000);
+            } else {
+                studioRecording = false;
+                btn.innerText = '🔴 Start Recording';
+                btn.style.background = '#4CAF50';
+                
+                studioRecorder.stop();
+                clearInterval(studioTimerInterval);
+                
+                studioRecorder.onstop = () => {
+                    const blob = new Blob(studioChunks, { type: 'video/webm' });
+                    saveRecording(blob);
+                    alert('✅ Studio session recorded and saved!');
+                };
+            }
+        }
+
+        // Load data on start
+        window.addEventListener('load', () => {
+            const recData = localStorage.getItem('recordings');
+            if (recData) {
+                const data = JSON.parse(recData);
+                renderRecordings();
+            }
+            
+            const voiceData = localStorage.getItem('voiceMemos');
+            if (voiceData) {
+                voiceMemos = JSON.parse(voiceData);
+                renderVoiceMemos();
+            }
+
+            initializeChallenges();
+        });
+
+        // ============ FEATURE 1: VOICE-TO-TEXT NOTES ============
+        let recognition;
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.lang = 'en-US';
+        }
+
+        function startVoiceToText() {
+            if (!recognition) {
+                alert('Speech recognition not supported in your browser');
+                return;
+            }
+
+            document.getElementById('voiceToTextArea').value = '';
+            document.getElementById('voiceToTextStatus').innerText = '🎤 Listening...';
+            document.getElementById('voiceToTextBtn').style.display = 'none';
+            document.getElementById('stopVoiceToTextBtn').style.display = 'block';
+
+            recognition.onstart = () => {
+                document.getElementById('voiceToTextStatus').innerText = '🎤 Listening...';
+            };
+
+            recognition.onresult = (event) => {
+                let transcript = '';
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    transcript += event.results[i][0].transcript;
+                }
+                document.getElementById('voiceToTextArea').value = transcript;
+            };
+
+            recognition.onerror = (event) => {
+                document.getElementById('voiceToTextStatus').innerText = '❌ Error: ' + event.error;
+            };
+
+            recognition.start();
+        }
+
+        function stopVoiceToText() {
+            if (recognition) {
+                recognition.stop();
+                document.getElementById('voiceToTextStatus').innerText = '✅ Done speaking';
+                document.getElementById('voiceToTextBtn').style.display = 'block';
+                document.getElementById('stopVoiceToTextBtn').style.display = 'none';
+            }
+        }
+
+        function saveVoiceNote() {
+            const text = document.getElementById('voiceToTextArea').value;
+            if (!text.trim()) {
+                alert('No notes to save!');
+                return;
+            }
+
+            const note = {
+                id: Date.now(),
+                text: text,
+                date: new Date().toLocaleString(),
+                type: 'voice-note'
+            };
+
+            let voiceNotes = JSON.parse(localStorage.getItem('voiceNotes') || '[]');
+            voiceNotes.push(note);
+            localStorage.setItem('voiceNotes', JSON.stringify(voiceNotes));
+
+            alert('✅ Voice note saved!');
+            document.getElementById('voiceToTextArea').value = '';
+            document.getElementById('voiceToTextStatus').innerText = '';
+        }
+
+        // ============ FEATURE 2: VIDEO COMPARISON ============
+        let referenceVideoBlob;
+
+        function loadReferenceVideo() {
+            const file = document.getElementById('referenceVideo').files[0];
+            if (!file) return;
+
+            referenceVideoBlob = file;
+            const url = URL.createObjectURL(file);
+            document.getElementById('refVideo').src = url;
+        }
+
+        function populateRecordingSelect() {
+            const select = document.getElementById('yourRecording');
+            select.innerHTML = '<option>Select your recording...</option>';
+
+            recordings.forEach(rec => {
+                const option = document.createElement('option');
+                option.value = rec.id;
+                option.text = rec.name;
+                select.appendChild(option);
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const observer = setInterval(() => {
+                if (recordings.length > 0) {
+                    populateRecordingSelect();
+                    clearInterval(observer);
+                }
+            }, 500);
+        });
+
+        function syncVideos() {
+            const yourVideo = document.getElementById('yourVideo');
+            const refVideo = document.getElementById('refVideo');
+
+            if (!yourVideo.src || !refVideo.src) {
+                alert('Please select both videos first!');
+                return;
+            }
+
+            // Sync play - both start at same time
+            yourVideo.play();
+            refVideo.play();
+
+            // Sync pause
+            yourVideo.addEventListener('pause', () => refVideo.pause());
+            refVideo.addEventListener('pause', () => yourVideo.pause());
+
+            alert('🔄 Videos synced! Play in either video to control both.');
+        }
+
+        document.getElementById('yourRecording')?.addEventListener('change', function() {
+            const recId = parseInt(this.value);
+            if (recId) {
+                const rec = recordings.find(r => r.id === recId);
+                if (rec) {
+                    const url = URL.createObjectURL(rec.blob);
+                    document.getElementById('yourVideo').src = url;
+                }
+            }
+        });
+
+        // ============ FEATURE 3: DAILY CHALLENGES ============
+        const allChallenges = [
+            {
+                title: '🎯 5-Move Drill',
+                desc: 'Practice the same 5-move sequence 10 times without mistakes',
+                target: 10,
+                type: 'repetitions'
+            },
+            {
+                title: '⚡ Speed Challenge',
+                desc: 'Practice your choreography at 1.5x speed for 5 minutes',
+                target: 300,
+                type: 'seconds'
+            },
+            {
+                title: '📹 Record & Review',
+                desc: 'Record a 2-minute practice video and review it',
+                target: 120,
+                type: 'seconds'
+            },
+            {
+                title: '🔥 Endurance',
+                desc: 'Practice for 15 minutes straight',
+                target: 900,
+                type: 'seconds'
+            },
+            {
+                title: '🎵 Music Sync',
+                desc: 'Practice to your background music and stay on beat',
+                target: 1,
+                type: 'songs'
+            },
+            {
+                title: '💯 Perfectionist',
+                desc: 'Complete 5 repetitions with zero mistakes',
+                target: 5,
+                type: 'perfect_reps'
+            }
+        ];
+
+        let dailyChallenges = [];
+        let completedChallenges = [];
+
+        function initializeChallenges() {
+            const today = new Date().toDateString();
+            const savedData = localStorage.getItem('dailyChallengesData');
+
+            if (savedData) {
+                const data = JSON.parse(savedData);
+                if (data.date === today) {
+                    dailyChallenges = data.challenges;
+                    completedChallenges = data.completed;
+                    renderChallenges();
+                    return;
+                }
+            }
+
+            // New day - get 3 random challenges
+            dailyChallenges = [];
+            const shuffled = [...allChallenges].sort(() => Math.random() - 0.5);
+            dailyChallenges = shuffled.slice(0, 3);
+            completedChallenges = [];
+
+            saveChallengesData();
+            renderChallenges();
+        }
+
+        function renderChallenges() {
+            if (dailyChallenges.length === 0) {
+                document.getElementById('challengeDesc').innerText = 'Loading challenges...';
+                return;
+            }
+
+            const current = dailyChallenges[completedChallenges.length] || dailyChallenges[0];
+            document.getElementById('challengeTitle').innerText = current.title;
+            document.getElementById('challengeDesc').innerText = current.desc;
+
+            const completed = document.getElementById('completedChallengesCount');
+            completed.innerText = completedChallenges.length;
+
+            const list = document.getElementById('completedChallengesList');
+            list.innerHTML = '';
+            completedChallenges.forEach(c => {
+                const div = document.createElement('div');
+                div.style.cssText = 'background: #d4edda; padding: 8px; margin: 5px 0; border-radius: 4px; color: #155724;';
+                div.innerText = '✅ ' + c;
+                list.appendChild(div);
+            });
+        }
+
+        function startChallenge() {
+            const current = dailyChallenges[completedChallenges.length];
+            if (!current) {
+                alert('🎉 You completed all challenges for today!');
+                return;
+            }
+
+            alert(`🎯 Challenge Started: ${current.desc}\n\nStart practicing now!`);
+        }
+
+        function completeChallenge() {
+            const current = dailyChallenges[completedChallenges.length];
+            if (current) {
+                completedChallenges.push(current.title);
+                saveChallengesData();
+                renderChallenges();
+                alert('🎉 Challenge completed! Great job!');
+            }
+        }
+
+        function skipChallenge() {
+            const current = dailyChallenges[completedChallenges.length];
+            if (current) {
+                dailyChallenges.push(dailyChallenges.splice(completedChallenges.length, 1)[0]);
+                saveChallengesData();
+                renderChallenges();
+            }
+        }
+
+        function saveChallengesData() {
+            const today = new Date().toDateString();
+            localStorage.setItem('dailyChallengesData', JSON.stringify({
+                date: today,
+                challenges: dailyChallenges,
+                completed: completedChallenges
+            }));
+        }
+
+        // Auto-complete challenge button (for testing)
+        document.addEventListener('DOMContentLoaded', () => {
+            const challengesDiv = document.getElementById('challenges-content');
+            if (challengesDiv) {
+                const completeBtn = document.createElement('button');
+                completeBtn.innerText = '✅ Mark Challenge Done';
+                completeBtn.style.cssText = 'background: #28a745; color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 10px; display: none;';
+                completeBtn.id = 'completeChallengBtn';
+                completeBtn.onclick = completeChallenge;
+                // Find the right place to add it
+            }
+        });
+    </script>
+</body>
+</html>
